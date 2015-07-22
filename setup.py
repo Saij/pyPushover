@@ -7,6 +7,7 @@ setup(
     url = "https://github.com/Saij/pyPushover",
     author = "Christoph Friedrich",
     scripts = ["pypushover"],
+    data_files = [("/etc", ["pypushover.ini"])],
     author_email = "christoph@christophfriedrich.de",
     description = "Command-Line tool for Pushover API",
     platforms = "any",
