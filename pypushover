@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!python
 
 __author__ = "Christoph Friedrich <christoph@christophfriedrich.de>"
 __version__ = "0.0.1"
