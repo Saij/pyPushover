@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+
+__author__ = "Christoph Friedrich <christoph@christophfriedrich.de>"
+__version__ = "0.0.1"
+
+import argparse, httplib, urllib, ConfigParser, json, platform, time
+
+class Pushover(argparse.ArgumentParser):
+    def __init__(self, *args, **kwargs):
+        super(Pushover, self).__init__(*args, **kwargs)
+
+        self.add_argument("-m", "--message", action = "store", help = "The message to send", required = True)
+        self.add_argument("-t", "--title", action = "store", help = "Title of the message (defaults to the hostname)", default = platform.node())
+        self.add_argument("-d", "--device", action = "store", help = "Device to send the message to")
+        self.add_argument("-p", "--priority", action = "store", help = "Message priority (defaults to 0)", default = 0, type = int)
+        self.add_argument("-r", "--retry", action = "store", help = "Retry time for emergency priority", type = int)
+        self.add_argument("-e", "--expire", action = "store", help = "Expire time for emergency priority", type = int)
+
+        self.args = {}
+
+    def sendPushover(self, appToken, userKey, message, **kwargs):
+        options = {
+            "token": appToken,
+            "user": userKey,
+            "message": message,
+            "timestamp": int(time.time())
+        }
+
+        for key in kwargs:
+            if not kwargs[key] == None:
+                options[key] = kwargs[key]
+
+        conn = httplib.HTTPSConnection("api.pushover.net:443")
+        conn.request("POST", "/1/messages.json", urllib.urlencode(options), { "Content-type": "application/x-www-form-urlencoded" })
+        response = conn.getresponse()
+
+        if not response.status == 200:
+            responseValue = json.loads(response.read())
+            for message in responseValue["errors"]:
+                print "ERROR: " + message
+        return response.status
+
+    def process(self):
+        self.args = vars(self.parse_args())
+
+        self.config = ConfigParser.ConfigParser()
+        if not self.config.read(["pypushover.ini", "/etc/pypushover.ini"]):
+            print "Error reading configuration file!"
+            return True
+
+        if self.args["priority"] and (self.args["priority"] < -2 or self.args["priority"] > 2):
+            print "Priority must be between -2 and 2!"
+            return False
+
+        self.sendPushover(
+            appToken = self.config.get("Pushover", "AppToken"), 
+            userKey = self.config.get("Pushover", "UserKey"), 
+            message = self.args["message"],
+            title = self.args["title"],
+            device = self.args["device"],
+            priority = self.args["priority"],
+            retry = self.args["retry"],
+            expire = self.args["expire"]
+        )
+
+        return True
+
+# Main function
+if __name__ == "__main__":
+    parser = Pushover()
+    if (not parser.process()):
+        parser.print_help()
